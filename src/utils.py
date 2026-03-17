@@ -1,10 +1,10 @@
-import os 
+import os
 import sys
 import numpy as np
 import pandas as pd
-import pickle
 import dill
 from sklearn.metrics import r2_score
+from sklearn.model_selection import RandomizedSearchCV # Changed from GridSearchCV
 
 from src.exception import CustomException
 from src.logger import logging
@@ -18,27 +18,43 @@ def save_object(file_path, obj):
             dill.dump(obj, file_obj)
 
     except Exception as e:
-        logging.info("Error in saving object")
         raise CustomException(e, sys)
     
-def evaluate_models(X_train, y_train, X_test, y_test, models):
+def evaluate_models(X_train, y_train, X_test, y_test, models, param):
     try:
-        model_report: dict = {}
+        model_report = {}
 
-        for i in range(len(models)):
-            model = list(models.values())[i]
-            model.fit(X_train, y_train)
+        for model_name, model in models.items():
+            param_grid = param.get(model_name, {})
 
-            y_train_pred = model.predict(X_train)
-            y_test_pred = model.predict(X_test)
+            logging.info(f"Started tuning for: {model_name}")
 
-            train_model_score = r2_score(y_train, y_train_pred)
+            # Optimization 1: Use RandomizedSearchCV instead of GridSearchCV
+            # Optimization 2: n_jobs=-1 uses all CPU cores
+            # Optimization 3: n_iter=10 limits the search to 10 random combinations per model
+            rs = RandomizedSearchCV(
+                estimator=model,
+                param_distributions=param_grid,
+                n_iter=5, # You can increase this for better accuracy or decrease for speed
+                cv=3,
+                n_jobs=-1, 
+                verbose=0,
+                random_state=42
+            )
+
+            rs.fit(X_train, y_train)
+
+            # Optimization 4: Use the best estimator directly (no need to refit manually)
+            best_model = rs.best_estimator_
+            
+            # Predict
+            y_test_pred = best_model.predict(X_test)
             test_model_score = r2_score(y_test, y_test_pred)
 
-            model_report[list(models.keys())[i]] = test_model_score
+            model_report[model_name] = test_model_score
+            logging.info(f"Model: {model_name} | R2 Score: {test_model_score}")
 
         return model_report
 
     except Exception as e:
-        logging.info("Error in evaluating models")
         raise CustomException(e, sys)
