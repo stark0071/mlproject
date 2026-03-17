@@ -9,6 +9,8 @@ from dataclasses import dataclass
 
 from src.components.data_transformation import DataTransformation
 from src.components.data_transformation import DataTransformerConfig
+from src.components.model_trainer import ModelTrainer
+from src.components.model_trainer import ModelTrainerConfig
 
 # --- Configuration Class ---
 @dataclass
@@ -61,6 +63,10 @@ if __name__ == "__main__":
     # This is where the code you showed earlier gets executed
     data_transformation = DataTransformation()
     train_arr, test_arr, _ = data_transformation.initiate_data_transformation(train_data, test_data)
-    
-    print("Data Ingestion and Transformation Successful!")
-    logging.info("Transformation complete. Arrays ready for Model Training.")
+
+    # 3. Trigger Model Training
+    model_trainer = ModelTrainer()
+    score = model_trainer.initiate_model_trainer(train_arr, test_arr)
+    print("R2 Score for the best model is: ", score)
+
+    logging.info("Data Ingestion and Model Training process completed successfully.")
